@@ -99,7 +99,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     }
   }
 
-
     "TransactionEventProcessorStreamTask" should "not generate audit history indexer event" in {
       server.start(9200)
       server.enqueue(new MockResponse().setHeader(
@@ -151,6 +150,35 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
           BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedAuditHistoryEventsCount}").getValue() should be(0)
       }
     }
+
+  "TransactionEventProcessorStreamTask" should "not generate obsrv event" in {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaObsrvOutputTopic)).thenReturn(new AuditEventSink)
+    if (jobConfig.obsrvMetadataGenerator) {
+      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
+
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalObsrvMetaDataGeneratorEventsCount}").getValue() should be(2)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedObsrvMetaDataGeneratorEventsCount}").getValue() should be(2)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.obsrvMetaDataGeneratorEventsSuccessCount}").getValue() should be(0)
+    }
+  }
+//
+//  "TransactionEventProcessorStreamTask" should "generate obsrv event" in {
+//    val setBoolean = config.withValue("job.obsrv-metadata-generator", ConfigValueFactory.fromAnyRef(true))
+//    val newConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(setBoolean)
+//
+//    when(mockKafkaUtil.kafkaJobRequestSource[Event](newConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
+//    when(mockKafkaUtil.kafkaStringSink(newConfig.kafkaObsrvOutputTopic)).thenReturn(new AuditEventSink)
+//
+//    if(newConfig.obsrvMetadataGenerator) {
+//      new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil).process()
+//
+//      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalObsrvMetaDataGeneratorEventsCount}").getValue() should be(2)
+//      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedObsrvMetaDataGeneratorEventsCount}").getValue() should be(0)
+//      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.obsrvMetaDataGeneratorEventsSuccessCount}").getValue() should be(1)
+//      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.failedObsrvMetaDataGeneratorEventsCount}").getValue() should be(0)
+//    }
+//  }
 }
 
 class AuditEventMapSource extends SourceFunction[Event] {
@@ -174,16 +202,6 @@ class AuditHistoryMapSource extends SourceFunction[Event] {
   override def cancel(): Unit = {}
 }
 
-class EventMapSource extends SourceFunction[Event] {
-
-  override def run(ctx: SourceContext[Event]) {
-
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_9),0,11))
-  }
-
-  override def cancel(): Unit = {}
-}
 class RandomObjectTypeAuditEventGeneratorMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {

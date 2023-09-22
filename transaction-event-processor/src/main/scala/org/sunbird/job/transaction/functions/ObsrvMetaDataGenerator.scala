@@ -14,7 +14,6 @@ import java.util
 
 class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
-
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[ObsrvMetaDataGenerator])
 
   override def metricsList(): List[String] = {

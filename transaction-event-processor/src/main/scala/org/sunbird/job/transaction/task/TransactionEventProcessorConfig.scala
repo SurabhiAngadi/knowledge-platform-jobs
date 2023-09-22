@@ -16,13 +16,14 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
+  val kafkaRouterTopic: String = config.getString("kafka.output.router.topic")
   val kafkaAuditOutputTopic: String = config.getString("kafka.output.audit.topic")
   val kafkaObsrvOutputTopic: String = config.getString("kafka.output.obsrv.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
+  val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
 
   //Flink Jobs Configuration
-  val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
   val auditEventGenerator: Boolean = config.getBoolean("job.audit-event-generator")
   val auditHistoryIndexer: Boolean = config.getBoolean("job.audit-history-indexer")
   val obsrvMetadataGenerator: Boolean = config.getBoolean("job.obsrv-metadata-generator")
@@ -48,7 +49,7 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val failedAuditEventsCount = "failed-audit-events-count"
   val auditEventSuccessCount = "audit-event-success-count"
 
-  //Audit Event Generator Metric List
+  //Audit History Indexer Metric List
   val totalAuditHistoryEventsCount = "total-audit-history-events-count"
   val skippedAuditHistoryEventsCount = "skipped-audit-history-events-count"
   val failedAuditHistoryEventsCount = "failed-audit-history-events-count"
@@ -63,11 +64,19 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
 
   // Consumers
   val transactionEventConsumer = "transaction-event-processor-consumer"
+  val transactionEventProducer = "transaction-event-processor-producer"
+  val transactionEventRouterConsumer = "transaction-event-router-consumer"
   val auditEventGeneratorFunction = "audit-event-generator-function"
   val auditHistoryIndexerFunction = "audit-history-indexer-function"
   val obsrvMetaDataGeneratorFunction = "obsrv-metadata-generator-function"
   val transactionEventRouterFunction = "transaction-event-router-function"
-  val transactionEventProducer = "transaction-event-processor-producer"
+  val transactionEventRouterProducer = "transaction-event-router-producer"
+  val auditEventProducer = "audit-event-generator-producer"
+  val auditEventConsumer = "audit-event-generator-consumer"
+  val auditHistoryProducer = "audit-history-indexer-producer"
+  val auditHistoryConsumer = "audit-history-indexer-consumer"
+  val obsrvEventProducer = "obsrv-metadata-generator-producer"
+  val obsrvEventConsumer = "obsrv-metadata-generator-consumer"
 
   val basePath = config.getString("schema.basePath")
   val configVersion = "1.0"

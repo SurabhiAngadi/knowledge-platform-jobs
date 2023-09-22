@@ -3,17 +3,20 @@ package org.sunbird.job.spec.service
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.mockito.Mockito
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{verify, when}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.transaction.domain.{AuditHistoryRecord, Event}
+import org.sunbird.job.transaction.domain.{AuditHistoryRecord, Event, ObsrvEvent}
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer}
+import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer, ObsrvMetaDataGenerator}
 import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
+import org.mockito.Mockito._
+import org.mockito.Matchers._
 
 import java.io.IOException
 import java.util
@@ -26,9 +29,12 @@ class TransactionEventProcessorTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(config)
   lazy val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
+  lazy val mockContext = mock[ProcessFunction[Event, String]#Context](Mockito.withSettings().serializable())
+  lazy val mockLogger = mock[LoggerFactory](Mockito.withSettings().serializable())
   lazy val auditEventGenerator: AuditEventGenerator = new AuditEventGenerator(jobConfig)
   lazy val mockElasticUtil:ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
   lazy val auditHistoryIndexer: AuditHistoryIndexer = new AuditHistoryIndexer(jobConfig,mockElasticUtil)
+  lazy val obsrvMetaDataGenerator: ObsrvMetaDataGenerator = new ObsrvMetaDataGenerator(jobConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -157,6 +163,17 @@ class TransactionEventProcessorTestSpec extends BaseTestSpec {
     auditHistoryRec.objectId should be(inputEvent.nodeUniqueId)
     auditHistoryRec.objectType should be(inputEvent.objectType)
     auditHistoryRec.logRecord should be("""{"addedTags":[],"addedRelations":[],"properties":{},"removedRelations":[{"label":"qq\n","rel":"associatedTo","dir":"OUT","id":"do_113198273083662336127","relMetadata":{},"type":"AssessmentItem"}],"removedTags":[]}""")
+  }
+
+  "TransactionEventProcessorService" should "generate obsrv metadata event" in {
+    val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)
+
+    val (eventStr, objectType) = obsrvMetaDataGenerator.getAuditMessage(new Event(inputEvent, 0, 11))(jobConfig, mockMetrics)
+    val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
+
+    eventMap("eid") should be("AUDIT")
+    eventMap("ver") should be("3.0")
+    eventMap("edata") shouldNot be(null)
   }
 
 }

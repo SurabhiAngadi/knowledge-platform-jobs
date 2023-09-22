@@ -63,7 +63,6 @@ trait TransactionEventProcessorService {
 
   def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: TransactionEventProcessorConfig): Unit = {
     val inputEvent = JSONUtil.serialize(message)
-    logger.info("Input Event :" + inputEvent)
     logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.createdOn + ", Operation Type:" + message.operationType)
     try {
       val (eventStr, objectType) = getAuditMessage(message)(config, metrics)
